@@ -1,0 +1,90 @@
+﻿@page "/"
+@using System.Text.Json
+@using System.Text
+@using ChatGPTIntegrated.Models
+@inject HttpClient Http
+@using Microsoft.JSInterop
+@using Microsoft.AspNetCore.Authorization
+@using Microsoft.AspNetCore.Components.Authorization
+@using Microsoft.AspNetCore.Components.Forms
+@using Microsoft.AspNetCore.Components.Routing
+@using Microsoft.AspNetCore.Components.Web
+@rendermode InteractiveServer
+
+
+<h3>ChatGPT API Integration</h3>
+
+<div>
+    <label for="userInput">Enter your prompt:</label>
+    <input @bind="userPrompt" id="userInput" class="form-control" />
+    <button @onclick="SubmitPrompt" class="btn btn-primary mt-3">@buttonText</button>
+</div>
+
+@if (responseText != null)
+{
+    <h4>Response:</h4>
+    <p>@responseText</p>
+}
+
+@code {
+    private string userPrompt = string.Empty;
+    private string responseText;
+    private string buttonText = "Send";
+
+    // Your OpenAI API Key
+    private readonly string apiKey = "***********"; //your api key
+
+    private async Task SubmitPrompt()
+    {
+        buttonText = "Getting Best Results";
+        // Prepare the request to the OpenAI API
+        var url = "https://api.openai.com/v1/chat/completions";
+
+        var requestData = new
+        {
+            model = "gpt-4",
+            messages = new[]
+            {
+                new { role = "system", content = "You are a helpful assistant." },
+                new { role = "user", content = userPrompt }
+            },
+            temperature = 0.7
+        };
+
+        var requestMessage = new HttpRequestMessage(HttpMethod.Post, url);
+        requestMessage.Headers.Add("Authorization", $"Bearer {apiKey}");
+        requestMessage.Content = new StringContent(JsonSerializer.Serialize(requestData), Encoding.UTF8, "application/json");
+
+        try
+        {
+            // Send the request to OpenAI
+            var response = await Http.SendAsync(requestMessage);
+
+            if (response.IsSuccessStatusCode)
+            {
+                // Parse the response
+                var responseContent = await response.Content.ReadAsStringAsync();
+                var completion = JsonSerializer.Deserialize<ChatResponse>(responseContent);
+                responseText = completion.choices[0].message.content;
+            }
+            else
+            {
+                responseText = $"Error: {response.StatusCode}";
+            }
+        }
+        catch (Exception ex)
+        {
+            responseText = $"An error occurred: {ex.Message}";
+        }
+        finally
+        {
+            buttonText = "Send";
+        }
+    }
+
+   
+
+   
+
+   
+}
